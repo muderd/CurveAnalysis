@@ -778,6 +778,7 @@ public class MainForm : Form
                     plottedByFile[fp].Add(p.field);
             }
         }
+        bool hasPlotted = plottedByFile.Count > 0;
 
         // 清除现有图表
         foreach (var chart in _charts)
@@ -788,7 +789,7 @@ public class MainForm : Form
         _charts.Clear();
         _chartCounter = 0;
 
-        // 为每个文件创建独立图表，只包含该文件已绘制的字段
+        // 始终为每个文件创建独立图表
         for (int fi = 0; fi < _files.Count; fi++)
         {
             var file = _files[fi];
@@ -811,11 +812,20 @@ public class MainForm : Form
             chart.PopBtn.Click += (_, _) => PopOutChart(chart);
             if (_baselineActive) AttachBaseline(chart);
 
-            // 只绘入该文件之前已绘制的字段
-            if (plottedByFile.TryGetValue(file.FilePath, out var fields))
+            // 如果之前有绘制记录，只显示该文件已绘制的字段；否则显示全部数值字段
+            if (hasPlotted && plottedByFile.TryGetValue(file.FilePath, out var fields))
             {
                 foreach (var header in fields)
                     PlotField(chart, file.FilePath, header);
+            }
+            else
+            {
+                foreach (var header in file.Headers)
+                {
+                    var data = file.GetData(header);
+                    if (data.Length > 0 && !header.Equals(TsCol, StringComparison.OrdinalIgnoreCase))
+                        PlotField(chart, file.FilePath, header);
+                }
             }
 
             _charts.Add(chart);
