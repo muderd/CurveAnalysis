@@ -1,26 +1,79 @@
-# Changelog
+# 更新日志 (Changelog)
 
-## V16b (2026-05-06) - Bug Fix
-- **Fix**: "按文件分图" now only shows previously plotted fields per file, instead of all fields
-- Root cause: SplitByFile() was iterating all headers and plotting everything; now it collects currently plotted fields before clearing and only re-plots those
+## 2026-05-06 - Bug Fix: 按文件分图
 
-## V16 (2026-04-29)
-- Curve thickening, high-contrast colors, search filter
-- Save as image, file drag-drop, X-axis granularity
-- Background theme switch, presets, floating window
-- Grid layout, baseline comparison, click-to-show data
-- Label anti-overlap
+### 问题描述
+V16 的"按文件分图"功能存在 bug：点击后会将**所有文件的所有字段**都绘入图表，而不是只显示用户已加载/已绘制的数据。
 
-## V15 (2026-04-29)
-- Merged overlay + multi-chart modes
-- Split by file, merge all to one chart
-- Auto legend prefix for data source
+### 根因分析
+`SplitByFile()` 方法遍历每个文件的 `Headers`，对所有数值字段调用 `PlotField()`，没有过滤用户实际选择的字段。
 
-## V14 (2026-04-29)
-- Multi-chart parallel display
-- Independent chart management
+### 修复方案
+分图前先收集当前所有图表中已绘制的字段，按文件路径分组：
+- 如果用户之前有绘制记录：为每个文件创建图表，只显示该文件已绘制的字段
+- 如果没有绘制记录（空白状态）：为每个文件创建图表，显示全部数值字段（保持原有行为）
 
-## V13 (2026-04-29)
-- Basic overlay functionality
-- GBK/UTF-8 encoding support
-- Header config dialog
+### 修复文件
+- `src/Program.cs` — 主程序源码
+
+### 发布版本
+| 文件 | 版本 | 说明 |
+|------|------|------|
+| `CurveAnalysis_V13_叠图版.exe` | V13 | 基础叠图功能，GBK/UTF-8编码支持 |
+| `CurveAnalysis_V14_多图版.exe` | V14 | 多图并排显示，独立图表管理 |
+| `CurveAnalysis_V16_合并版_修复.exe` | V16 | 合并版 + 分图bug修复 |
+
+---
+
+## 2026-04-29 - V16 全功能版
+
+### 新功能
+- 曲线加粗 (StrokeThickness 1.5 → 2.5)
+- 高对比度 12 色 RGB 配色
+- 搜索框模糊过滤
+- 图表保存为图片
+- 文件拖拽加载
+- X轴粒度控制
+- 背景色切换 (白/浅灰/黑/深灰)
+- 常用预设收藏
+- 浮动窗口
+- 网格布局 (M×N)
+- 基线对比 (红色竖线 + 数据标签)
+- 单击显示数据
+- 标签防重叠
+
+### 改进
+- 控制栏布局优化
+- 预设按钮字体修复
+- TextAnnotation 渲染基线标签
+
+---
+
+## 2026-04-29 - V15 合并版
+
+### 新功能
+- 叠图 + 多图合一
+- 一键合并/分图
+- 图例数据前缀标注
+- 智能图表选择
+
+---
+
+## 2026-04-29 - V14 多图版
+
+### 新功能
+- 多图并排显示
+- 独立图表管理
+- 图表选择器
+
+---
+
+## 2026-04-29 - V13 叠图版
+
+### 功能
+- CSV 文件加载
+- GBK/UTF-8 编码自动检测
+- 表头配置对话框
+- 字段搜索过滤
+- 双击/拖拽绘图
+- 滚轮缩放、右键平移
