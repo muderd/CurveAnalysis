@@ -764,6 +764,21 @@ public class MainForm : Form
     private void SplitByFile()
     {
         if (_files.Count == 0) { MessageBox.Show("请先加载文件"); return; }
+
+        // 分图前先收集当前已绘制的字段，按文件路径分组
+        var plottedByFile = new Dictionary<string, List<string>>();
+        foreach (var chart in _charts)
+        {
+            foreach (var p in chart.Plotted)
+            {
+                var fp = p.file.FilePath;
+                if (!plottedByFile.ContainsKey(fp))
+                    plottedByFile[fp] = new List<string>();
+                if (!plottedByFile[fp].Contains(p.field))
+                    plottedByFile[fp].Add(p.field);
+            }
+        }
+
         // 清除现有图表
         foreach (var chart in _charts)
         {
@@ -773,7 +788,7 @@ public class MainForm : Form
         _charts.Clear();
         _chartCounter = 0;
 
-        // 为每个文件创建独立图表
+        // 为每个文件创建独立图表，只包含该文件已绘制的字段
         for (int fi = 0; fi < _files.Count; fi++)
         {
             var file = _files[fi];
@@ -796,11 +811,10 @@ public class MainForm : Form
             chart.PopBtn.Click += (_, _) => PopOutChart(chart);
             if (_baselineActive) AttachBaseline(chart);
 
-            // 将该文件的所有数值字段绘入此图
-            foreach (var header in file.Headers)
+            // 只绘入该文件之前已绘制的字段
+            if (plottedByFile.TryGetValue(file.FilePath, out var fields))
             {
-                var data = file.GetData(header);
-                if (data.Length > 0 && !header.Equals(TsCol, StringComparison.OrdinalIgnoreCase))
+                foreach (var header in fields)
                     PlotField(chart, file.FilePath, header);
             }
 
