@@ -361,6 +361,8 @@ public class MainForm : Form
 
     // V16 网格布局
     private int _gridRows = 1, _gridCols = 1;
+    private bool _autoLayout = true; // 默认自适应布局
+    private ToolStripTextBox _rowsBox = null!, _colsBox = null!;
 
     // V16 基线对比
     private bool _baselineActive;
@@ -408,21 +410,31 @@ public class MainForm : Form
         tb.Items.Add(new ToolStripSeparator());
         // 网格布局控件
         tb.Items.Add(new ToolStripLabel("布局:"));
-        var rowsBox = new ToolStripTextBox { Size = new Size(30, 25), Text = "1" };
-        tb.Items.Add(rowsBox);
+        _rowsBox = new ToolStripTextBox { Size = new Size(30, 25), Text = "1" };
+        tb.Items.Add(_rowsBox);
         tb.Items.Add(new ToolStripLabel("行 x"));
-        var colsBox = new ToolStripTextBox { Size = new Size(30, 25), Text = "1" };
-        tb.Items.Add(colsBox);
+        _colsBox = new ToolStripTextBox { Size = new Size(30, 25), Text = "1" };
+        tb.Items.Add(_colsBox);
         tb.Items.Add(new ToolStripLabel("列"));
         tb.Items.Add(new ToolStripButton("应用布局", null, (_, _) =>
         {
-            if (int.TryParse(rowsBox.Text, out var r) && int.TryParse(colsBox.Text, out var c) && r > 0 && c > 0)
+            if (int.TryParse(_rowsBox.Text, out var r) && int.TryParse(_colsBox.Text, out var c) && r > 0 && c > 0)
             {
                 _gridRows = r;
                 _gridCols = c;
+                _autoLayout = false;
                 RelayoutCharts();
-                _statusLabel.Text = $"布局已设置: {_gridRows} 行 x {_gridCols} 列";
+                _statusLabel.Text = $"布局已设置: {_gridRows} 行 x {_gridCols} 列（手动）";
             }
+        }));
+        tb.Items.Add(new ToolStripButton("自动", null, (_, _) =>
+        {
+            _autoLayout = true;
+            AutoCalcLayout();
+            _rowsBox.Text = _gridRows.ToString();
+            _colsBox.Text = _gridCols.ToString();
+            RelayoutCharts();
+            _statusLabel.Text = $"布局已设为自适应: {_gridRows} 行 x {_gridCols} 列";
         }));
         tb.Items.Add(new ToolStripSeparator());
         tb.Items.Add(new ToolStripButton("基线对比", null, (_, _) => ToggleBaseline()));
@@ -693,9 +705,22 @@ public class MainForm : Form
         else if (_chartSelector.Items.Count > 0) _chartSelector.SelectedIndex = 0;
     }
 
+    private void AutoCalcLayout()
+    {
+        int n = _charts.Count;
+        if (n <= 0) { _gridRows = 1; _gridCols = 1; return; }
+        // 计算最接近正方形的布局
+        int cols = (int)Math.Ceiling(Math.Sqrt(n));
+        int rows = (int)Math.Ceiling((double)n / cols);
+        _gridRows = rows;
+        _gridCols = cols;
+    }
+
     private void RelayoutCharts()
     {
         if (_charts.Count == 0) return;
+
+        if (_autoLayout) AutoCalcLayout();
 
         int w = _chartsContainer.ClientSize.Width - (_chartsContainer.AutoScroll ? SystemInformation.VerticalScrollBarWidth : 0);
         int h = _chartsContainer.ClientSize.Height;
@@ -778,7 +803,12 @@ public class MainForm : Form
                     plottedByFile[fp].Add(p.field);
             }
         }
-        bool hasPlotted = plottedByFile.Count > 0;
+
+        if (plottedByFile.Count == 0)
+        {
+            _statusLabel.Text = "没有已绘制的字段，无法分图";
+            return;
+        }
 
         // 清除现有图表
         foreach (var chart in _charts)
@@ -789,10 +819,13 @@ public class MainForm : Form
         _charts.Clear();
         _chartCounter = 0;
 
-        // 始终为每个文件创建独立图表
-        for (int fi = 0; fi < _files.Count; fi++)
+        // 仅为有已绘制字段的文件创建图表
+        foreach (var kvp in plottedByFile)
         {
-            var file = _files[fi];
+            var file = _files.FirstOrDefault(f => f.FilePath == kvp.Key);
+            if (file == null) continue;
+            var fields = kvp.Value;
+
             _chartCounter++;
             var chart = new ChartInfo($"图表{_chartCounter}");
 
@@ -812,29 +845,21 @@ public class MainForm : Form
             chart.PopBtn.Click += (_, _) => PopOutChart(chart);
             if (_baselineActive) AttachBaseline(chart);
 
-            // 如果之前有绘制记录，只显示该文件已绘制的字段；否则显示全部数值字段
-            if (hasPlotted && plottedByFile.TryGetValue(file.FilePath, out var fields))
-            {
-                foreach (var header in fields)
-                    PlotField(chart, file.FilePath, header);
-            }
-            else
-            {
-                foreach (var header in file.Headers)
-                {
-                    var data = file.GetData(header);
-                    if (data.Length > 0 && !header.Equals(TsCol, StringComparison.OrdinalIgnoreCase))
-                        PlotField(chart, file.FilePath, header);
-                }
-            }
+            foreach (var header in fields)
+                PlotField(chart, file.FilePath, header);
 
             _charts.Add(chart);
             _chartsContainer.Controls.Add(chart.Container);
         }
         RefreshChartSelector();
         if (_charts.Count > 0) _chartSelector.SelectedIndex = 0;
+        // 自动计算布局
+        _autoLayout = true;
+        AutoCalcLayout();
+        _rowsBox.Text = _gridRows.ToString();
+        _colsBox.Text = _gridCols.ToString();
         RelayoutCharts();
-        _statusLabel.Text = $"已按文件分图: {_files.Count} 个文件";
+        _statusLabel.Text = $"已按文件分图: {_charts.Count} 个文件（{_gridRows}行x{_gridCols}列）";
     }
 
     // ════════════════ V15：智能选中 ════════════════
