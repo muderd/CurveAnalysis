@@ -60,8 +60,15 @@ dotnet publish -c Release -r win-x64 --self-contained true \
 ## 项目结构
 
 ```
-CurveAnalysis_CSharp/
-├── Program.cs          # 主程序（CSV读取 + UI + 绘图）
-├── Program.cs.bak      # 备份
-└── CurveAnalysis_CSharp.csproj
+curve_analysis/
+├── CurveAnalysis_CSharp/
+│   ├── Program.cs              # 主程序（单文件，所有代码）
+│   └── CurveAnalysis_CSharp.csproj
+├── backups/                    # 历史版本源码备份
+│   ├── Program_V13_Final.cs
+│   └── Program_V16_Fixed.cs
+├── CurveAnalysis_V13.exe       # V13 叠图版
+├── CurveAnalysis_V16.exe       # V16 合并版（推荐）
+├── VERSIONS.md                 # 版本架构说明
+└── CHANGELOG.md                # 更新日志
 ```
